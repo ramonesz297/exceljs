@@ -1,16 +1,16 @@
 {
-  "name": "exceljs",
+  "name": "@ramonesz297/exceljs",
   "version": "4.4.0",
   "description": "Excel Workbook Manager - Read and Write xlsx and csv Files.",
   "private": false,
   "license": "MIT",
   "author": {
-    "name": "Guyon Roche",
-    "email": "guyon@live.com"
+    "name": "ramonesz297",
+    "email": "ramonesz297@outlook.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/exceljs/exceljs.git"
+    "url": "https://github.com/ramonesz297/exceljs.git"
   },
   "engines": {
     "node": ">=8.3.0"
