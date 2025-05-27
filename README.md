@@ -1,3 +1,18 @@
+# This is a fork of [ExcelJS](https://github.com/exceljs/exceljs) v4.4.0
+
+This fork introduces several memory-management and performance improvements (especially for browsers).
+
+The supported size is now about 300 000 rows and 50 columns. (without breaking changes)
+
+Most of the work is in [lib/utils/xml-stream.js](lib/utils/xml-stream.js).
+
+Notable changes
+- Fixed the maximum-array-length issue (implemented as an array of chunks).
+- In hot paths, a different method is used to obtain an ArrayBuffer with XML data (using Web Worker if supported).
+- Reduced string concatenations.
+- Eliminated unnecessary memory allocations.
+  
+
 # ExcelJS
 
 [![Build Status](https://github.com/exceljs/exceljs/actions/workflows/tests.yml/badge.svg?branch=master&event=push)](https://github.com/exceljs/exceljs/actions/workflows/tests.yml)
