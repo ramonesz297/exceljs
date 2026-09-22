@@ -1,6 +1,44 @@
 const XmlStream = verquire('utils/xml-stream');
 
 describe('XmlStream', () => {
+  it('flushes many chunks without revisiting previously sent buckets', () => {
+    const xmlStream = new XmlStream();
+    const sent = [];
+    xmlStream._worker = {postMessage: message => sent.push(message.args.join(''))};
+    let bucketReads = 0;
+    xmlStream._chanks = new Proxy(xmlStream._chanks, {
+      get(target, key) {
+        if (/^\d+$/.test(String(key))) bucketReads++;
+        return Reflect.get(target, key);
+      },
+    });
+
+    const count = 8196 * 10 + 7;
+    for (let i = 0; i < count; i++) xmlStream.writeXml('x');
+    xmlStream._flush();
+
+    expect(sent.join('')).to.equal('x'.repeat(count));
+    expect(bucketReads).to.be.at.most(sent.length * 2);
+  });
+
+  ['rollback', 'commit'].forEach(action => {
+    it(`preserves worker output after ${action} across chunk boundaries`, () => {
+      const xmlStream = new XmlStream();
+      const sent = [];
+      xmlStream._worker = {postMessage: message => sent.push(message.args.join(''))};
+      for (let i = 0; i < 8199; i++) xmlStream.writeXml('a');
+      xmlStream.addRollback();
+      for (let i = 0; i < 16397; i++) xmlStream.writeXml('b');
+      xmlStream[action]();
+      for (let i = 0; i < 8201; i++) xmlStream.writeXml('c');
+      xmlStream._flush();
+
+      expect(sent.join('')).to.equal(
+        'a'.repeat(8199) + (action === 'commit' ? 'b'.repeat(16397) : '') + 'c'.repeat(8201)
+      );
+    });
+  });
+
   ['success', 'error', 'postMessage error', 'flush error'].forEach(outcome => {
     it(`releases the worker and Blob URL after ${outcome}`, async () => {
       const xmlStream = new XmlStream();
