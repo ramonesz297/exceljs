@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>DataGrid ExcelJS integration</title>
+  <link rel="stylesheet" href="/vendor/devextreme/dist/css/dx.light.css">
+  <script src="/build/playwright-vendor.js"></script>
+  <script src="/dist/exceljs.js"></script>
+</head>
+<body>
+  <button id="all" disabled>Export all</button>
+  <button id="selected" disabled>Export selected</button>
+  <output id="status">Loading</output>
+  <div id="grid"></div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const rowCount = Number(params.get('rows') || 120);
+    const wide = params.has('wide');
+    const data = Array.from({length: rowCount}, (_, id) => {
+      const row = {id, text: `Рядок ${id} <&> 😀`, amount: id / 4, active: id % 2 === 1,
+        date: new Date(Date.UTC(2026, 0, 1)), empty: null};
+      if (wide) {
+        for (let column = 6; column < 50; column++) row[`c${column}`] = id * 50 + column;
+      }
+      return row;
+    });
+    const columns = [
+      {dataField: 'id', caption: 'ID', dataType: 'number'},
+      {dataField: 'text', caption: 'Text'},
+      {dataField: 'amount', caption: 'Amount', dataType: 'number', format: '#,##0.00'},
+      {dataField: 'active', caption: 'Active', dataType: 'boolean'},
+      {dataField: 'date', caption: 'Date', dataType: 'date', format: 'yyyy-MM-dd'},
+      {dataField: 'empty', caption: 'Empty'},
+    ];
+    if (wide) {
+      for (let column = 6; column < 50; column++) columns.push({dataField: `c${column}`});
+    }
+    window.grid = new window.DataGrid(document.querySelector('#grid'), {
+      dataSource: data, keyExpr: 'id', columns, height: 400,
+      paging: {pageSize: 20}, selection: {mode: 'multiple'},
+      onContentReady() {
+        document.querySelector('#all').disabled = false;
+        document.querySelector('#selected').disabled = false;
+        document.querySelector('#status').textContent = 'Ready';
+      },
+    });
+
+    async function exportGrid(selectedRowsOnly) {
+      document.querySelector('#status').textContent = 'Exporting';
+      try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("D'Alsace");
+        worksheet.pageSetup.printTitlesRow = '1:1';
+        await window.exportDataGrid({
+          component: window.grid, worksheet, selectedRowsOnly, autoFilterEnabled: true,
+          customizeCell({gridCell, excelCell}) {
+            if (gridCell.rowType === 'header') excelCell.font = {bold: true};
+            if (gridCell.rowType === 'data' && gridCell.column.dataField === 'amount') {
+              excelCell.numFmt = '#,##0.00';
+            }
+          },
+        });
+        const buffer = await workbook.xlsx.writeBuffer();
+        const url = URL.createObjectURL(new Blob([buffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'grid.xlsx';
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+        document.querySelector('#status').textContent = 'Done';
+      } catch (error) {
+        document.querySelector('#status').textContent = `Failed: ${error.message}`;
+        throw error;
+      }
+    }
+    document.querySelector('#all').onclick = () => exportGrid(false);
+    document.querySelector('#selected').onclick = () => exportGrid(true);
+  </script>
+</body>
+</html>
