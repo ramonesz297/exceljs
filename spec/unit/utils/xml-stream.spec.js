@@ -1,6 +1,40 @@
 const XmlStream = verquire('utils/xml-stream');
 
 describe('XmlStream', () => {
+  ['success', 'error', 'postMessage error', 'flush error'].forEach(outcome => {
+    it(`releases the worker and Blob URL after ${outcome}`, async () => {
+      const xmlStream = new XmlStream();
+      const objectURL = URL.createObjectURL(new Blob(['worker source']));
+      const error = new Error('Worker failed');
+      const result = new ArrayBuffer(1);
+      let onMessage;
+      let terminated = false;
+      xmlStream._worker = {
+        objectURL,
+        addEventListener(type, listener) {
+          onMessage = listener;
+        },
+        postMessage() {
+          if (outcome === 'postMessage error') throw error;
+          if (outcome === 'error') this.onerror(error);
+          else onMessage({data: result});
+        },
+        terminate() {
+          terminated = true;
+        },
+      };
+      if (outcome === 'flush error') {
+        xmlStream._flush = () => { throw error; };
+      }
+
+      const actual = await xmlStream.toArrayBuffer().catch(e => e);
+      expect(actual).to.equal(outcome === 'success' ? result : error);
+      expect(terminated).to.equal(true);
+      expect(xmlStream._worker).to.equal(null);
+      expect(require('buffer').resolveObjectURL(objectURL)).to.equal(undefined);
+    });
+  });
+
   it('Writes simple XML doc', () => {
     const xmlStream = new XmlStream();
 
