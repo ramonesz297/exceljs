@@ -1,6 +1,6 @@
 {
   "name": "@ramonesz297/exceljs",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "Fork of exceljs - with memory management improvements.",
   "private": false,
   "license": "MIT",
